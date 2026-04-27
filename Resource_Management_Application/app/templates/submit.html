@@ -1,0 +1,310 @@
+﻿{% extends "base.html" %}
+{% block title %}Submit Hydrogenation Request{% endblock %}
+{% block content %}
+<section class="card">
+  <h2>Submit Hydrogenation Request</h2>
+  <p class="hint">Complete all fields before submitting. Select one equipment, verify ELN reference and timesheet code, and include clear Chemistry, Safety, Sampling, and Cleaning details for the operator.</p>
+
+  <form method="post" class="grid-form">
+    <h3 class="section-title full">Request Details</h3>
+
+    <label>
+      Requestor
+      <input name="requester_name" list="requester-options" required placeholder="Select or type requestor">
+      <datalist id="requester-options">
+        {% for user in user_options %}
+        <option value="{{ user['name'] }}"></option>
+        {% endfor %}
+      </datalist>
+    </label>
+
+    <label>
+      Request date
+      <input name="request_date" type="date">
+    </label>
+
+    <label>
+      ELN reference
+      <input name="eln_reference" required>
+    </label>
+
+    <label>
+      Project code
+      <select id="project_code" name="project_code" required>
+        <option value="">Select a project</option>
+        {% for project in project_options %}
+        <option
+          value="{{ project['project_name'] or project['name'] }}"
+          data-timesheet="{{ project['name'] }}"
+        >
+          {{ project['project_name'] or project['name'] }}
+        </option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <label>
+      Timesheet code
+      <input id="timesheet_code" name="timesheet_code" required readonly>
+    </label>
+
+    <label>
+      Required date
+      <input name="required_date" type="date">
+    </label>
+
+    <label>
+      Time / Duration
+      <input name="time_duration" placeholder="e.g., 6 h total">
+    </label>
+
+    <h3 class="section-title full">Equipment</h3>
+    <div class="full equipment-grid">
+      {% for item in equipment_options %}
+      <label class="check-row">
+        <input type="radio" name="equipment_selected" value="{{ item['name'] }}" required>
+        <span>
+          <strong>{{ item['name'] }}</strong>
+          {% if item['description'] %}
+          <span class="small">{{ item['description'] }}</span>
+          {% endif %}
+        </span>
+      </label>
+      {% endfor %}
+    </div>
+
+    <div class="form-block chemistry-block full">
+      <h3 class="form-block-title">Chemistry</h3>
+      <div class="section-grid">
+        <label class="full">
+          Chemical transformation (e.g., debenzylation)
+          <textarea name="chemical_transformation" rows="2"></textarea>
+        </label>
+
+        <label class="full">
+          Reagents / Solvents
+          <textarea name="reagents_solvents" rows="2"></textarea>
+        </label>
+
+        <label class="full">
+          Catalyst and Amount
+          <div class="table-wrap sample-table-wrap">
+            <table class="sample-table prep-table">
+              <thead>
+                <tr>
+                  <th>Catalyst</th>
+                  <th>Amount</th>
+                  <th>Unit</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><input name="catalyst_name" placeholder="e.g., Pd/C"></td>
+                  <td><input name="catalyst_amount_value" placeholder="e.g., 50"></td>
+                  <td>
+                    <select name="catalyst_amount_unit">
+                      <option value="mg" selected>mg</option>
+                      <option value="g">g</option>
+                    </select>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </label>
+
+        <label class="full">
+          Gas and Theory Uptake
+          <div class="table-wrap sample-table-wrap">
+            <table class="sample-table prep-table">
+              <thead>
+                <tr>
+                  <th>Gas</th>
+                  <th>Theory Uptake</th>
+                  <th>Unit</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><input name="gas_name" placeholder="H2, CO, CO2, etc"></td>
+                  <td><input name="theory_uptake_value" placeholder="e.g., 10"></td>
+                  <td>
+                    <select name="theory_uptake_unit">
+                      <option value="mmol" selected>mmol</option>
+                      <option value="L">L</option>
+                    </select>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </label>
+      </div>
+    </div>
+
+    <div class="form-block safety-block full">
+      <h3 class="form-block-title">Safety</h3>
+      <div class="section-grid">
+        <label class="full">
+          H phrases
+          <textarea name="h_phrases" rows="3"></textarea>
+        </label>
+
+        <label class="full">
+          COSHH
+          <textarea name="coshh" rows="3"></textarea>
+        </label>
+      </div>
+    </div>
+
+    <div class="form-block sampling-block full">
+      <h3 class="form-block-title">Sampling</h3>
+      <div class="section-grid">
+        <label class="full">
+          Samples
+          <div class="table-wrap sample-table-wrap">
+            <table class="sample-table">
+              <thead>
+                <tr>
+                  <th>Sample No.</th>
+                  <th>Time</th>
+                </tr>
+              </thead>
+              <tbody id="sample_rows">
+                <tr>
+                  <td class="sample-no-cell"><input class="sample-no-input" name="sample_numbers[]" value="1" readonly></td>
+                  <td><input name="sample_times[]" placeholder="e.g., 0.5 h"></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <button type="button" id="add_sample_row" class="small-btn sample-add-btn">Add Sample Row</button>
+        </label>
+
+        <label class="full">
+          Sample Preparation
+          <div class="table-wrap sample-table-wrap">
+            <table class="sample-table prep-table">
+              <thead>
+                <tr>
+                  <th>Sample Volume</th>
+                  <th>Unit</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><input name="sample_size"></td>
+                  <td>
+                    <select name="sample_size_unit">
+                      <option value="uL" selected>uL</option>
+                      <option value="mL">mL</option>
+                    </select>
+                  </td>
+                  <td></td>
+                </tr>
+                <tr>
+                  <th>Diluent</th>
+                  <th>Diluent Volume</th>
+                  <th>Unit</th>
+                </tr>
+                <tr>
+                  <td><input name="diluent"></td>
+                  <td><input name="diluent_volume"></td>
+                  <td>
+                    <select name="diluent_volume_unit">
+                      <option value="uL" selected>uL</option>
+                      <option value="mL">mL</option>
+                    </select>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </label>
+
+        <label class="full">
+          Analytical method
+          <textarea name="analytical_method" rows="2"></textarea>
+        </label>
+      </div>
+    </div>
+
+    <div class="form-block cleaning-block full">
+      <h3 class="form-block-title">Cleaning</h3>
+      <div class="section-grid">
+        <label class="full">
+          Cleaning solvents / protocol
+          <textarea name="cleaning_protocol" rows="2"></textarea>
+        </label>
+      </div>
+    </div>
+
+    <button type="submit" id="submit_request_btn" class="submit-btn full">Submit Request</button>
+  </form>
+</section>
+<script>
+  (function () {
+    const projectSelect = document.getElementById('project_code');
+    const timesheetInput = document.getElementById('timesheet_code');
+    if (!projectSelect || !timesheetInput) return;
+
+    const syncTimesheet = () => {
+      const option = projectSelect.options[projectSelect.selectedIndex];
+      timesheetInput.value = option ? (option.dataset.timesheet || '') : '';
+    };
+
+    projectSelect.addEventListener('change', syncTimesheet);
+    syncTimesheet();
+  })();
+
+  (function () {
+    const addBtn = document.getElementById('add_sample_row');
+    const rows = document.getElementById('sample_rows');
+    if (!addBtn || !rows) return;
+
+    const nextSampleNumber = () => rows.querySelectorAll('tr').length + 1;
+
+    addBtn.addEventListener('click', () => {
+      const row = document.createElement('tr');
+      row.innerHTML = `<td class="sample-no-cell"><input class="sample-no-input" name="sample_numbers[]" value="${nextSampleNumber()}" readonly></td><td><input name="sample_times[]" placeholder="e.g., 1.0 h"></td>`;
+      rows.appendChild(row);
+      document.dispatchEvent(new Event('form_state_recheck'));
+    });
+  })();
+
+  (function () {
+    const form = document.querySelector('form.grid-form');
+    const submitBtn = document.getElementById('submit_request_btn');
+    if (!form || !submitBtn) return;
+
+    const getControls = () => form.querySelectorAll('input, select, textarea');
+
+    const isFilled = (el) => {
+      if (el.disabled) return true;
+      if (el.type === 'radio') {
+        const group = form.querySelectorAll(`input[type="radio"][name="${el.name}"]`);
+        return Array.from(group).some((r) => r.checked);
+      }
+      if (el.type === 'checkbox') return true;
+      return String(el.value || '').trim() !== '';
+    };
+
+    const allFilled = () => {
+      const controls = Array.from(getControls());
+      return controls.every((el) => isFilled(el));
+    };
+
+    const updateSubmitState = () => {
+      const complete = allFilled();
+      submitBtn.classList.toggle('state-complete', complete);
+      submitBtn.classList.toggle('state-incomplete', !complete);
+    };
+
+    form.addEventListener('input', updateSubmitState);
+    form.addEventListener('change', updateSubmitState);
+    document.addEventListener('form_state_recheck', updateSubmitState);
+    updateSubmitState();
+  })();
+</script>
+{% endblock %}

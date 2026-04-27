@@ -1,0 +1,364 @@
+{% extends "base.html" %}
+{% block title %}Request Portal{% endblock %}
+{% block content %}
+<section class="card">
+  <div class="portal-header">
+    <div>
+      <h2>Submission Portal</h2>
+      <p class="hint">Browse requests on the left, full submission render on the right.</p>
+    </div>
+    <div class="action-group">
+      <button type="button" id="manage_system_open" class="small-btn">Manage System</button>
+    </div>
+  </div>
+
+  <div class="portal-split">
+    <aside class="submission-list">
+      <h3>Browse Entries</h3>
+      <div class="table-wrap browse-table-wrap">
+        <table class="browse-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Requestor</th>
+              <th>ELN Ref</th>
+              <th>Project</th>
+              <th>Status</th>
+              <th>Assigned Operator</th>
+              <th>Required</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in submissions %}
+            <tr class="submission-row {% if loop.first %}active{% endif %} {% if row['status'] == 'Completed' %}row-completed{% elif row['status'] == 'In Progress' %}row-in-progress{% elif row['status'] == 'Submitted' %}row-submitted{% endif %}" data-target="submission-{{ row['id'] }}">
+              <td>#{{ row['id'] }}</td>
+              <td>{{ row['requester_name'] or 'Unknown' }}</td>
+              <td>{{ row['eln_reference'] or 'N/A' }}</td>
+              <td>{{ row['project_code'] or 'N/A' }}</td>
+              <td>{{ row['status'] or 'N/A' }}</td>
+              <td>
+                {% if row['assigned_operator'] %}
+                {{ row['assigned_operator'] }}
+                {% else %}
+                <span class="unassigned-text">Unassigned</span>
+                {% endif %}
+              </td>
+              <td>{{ row['required_date'] or 'N/A' }}</td>
+              <td>
+                <form method="post" action="{{ url_for('main.delete_submission', request_id=row['id']) }}" onsubmit="return confirm('Delete submission #{{ row['id'] }}? This cannot be undone.');" onclick="event.stopPropagation();">
+                  <button type="submit" class="small-btn" onclick="event.stopPropagation();">Delete</button>
+                </form>
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="8" class="empty">No submissions yet.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </aside>
+    <div id="portal_splitter" class="splitter" title="Drag to resize panels"></div>
+
+    <section class="submission-view">
+      {% for row in submissions %}
+      <article id="submission-{{ row['id'] }}" class="submission-sheet {% if not loop.first %}hidden{% endif %}">
+        <div class="sheet-top">
+          <div>
+            <h3>Request #{{ row['id'] }}</h3>
+            <p class="small">Submitted by {{ row['requester_name'] or 'N/A' }} | Updated {{ row['updated_at'] or row['created_at'] or 'N/A' }}</p>
+          </div>
+          <div class="action-group">
+            <a class="button-link secondary small-btn" href="{{ url_for('main.print_submission', request_id=row['id']) }}" target="_blank" rel="noopener">Print/Save as PDF</a>
+          </div>
+        </div>
+
+        <form method="post" action="{{ url_for('main.update_submission', request_id=row['id']) }}" class="sheet-controls">
+          <label>
+            Assigned Operator
+            <select name="assigned_operator">
+              <option value="">Unassigned</option>
+              {% for operator_name in active_operator_options %}
+              <option value="{{ operator_name }}" {% if operator_name == row['assigned_operator'] %}selected{% endif %}>{{ operator_name }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>
+            Status
+            <select name="status">
+              {% for status in status_options %}
+              <option value="{{ status }}" {% if status == row['status'] %}selected{% endif %}>{{ status }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <button type="submit" class="small-btn">Save</button>
+        </form>
+        <iframe
+          class="pdf-frame"
+          src="{{ url_for('main.render_submission_pdf', request_id=row['id']) }}"
+          title="Submission PDF #{{ row['id'] }}"
+        ></iframe>
+      </article>
+      {% endfor %}
+    </section>
+  </div>
+</section>
+
+<div id="system_modal" class="modal-backdrop hidden">
+  <div class="modal-panel">
+    <div class="modal-header">
+      <h2>Reference Data Management</h2>
+      <button type="button" id="manage_system_close" class="small-btn">Close</button>
+    </div>
+    <p class="hint">Maintain lists used by the portal and request assignment.</p>
+    <div class="system-tabs" role="tablist" aria-label="System Management Tabs">
+      <button type="button" class="system-tab active" data-tab="system_projects">Projects</button>
+      <button type="button" class="system-tab" data-tab="system_users">Users</button>
+      <button type="button" class="system-tab" data-tab="system_equipment">Equipment</button>
+    </div>
+
+    <div id="system_projects" class="system-panel active">
+      <div class="project-admin">
+        <h3>Projects</h3>
+        <form method="post" action="{{ url_for('main.add_project_option') }}" class="project-add-form">
+          <input name="project_name" placeholder="Project" required>
+          <input name="project_code" placeholder="Timesheet code" required>
+          <button type="submit">Add Project</button>
+        </form>
+        <div class="table-wrap ref-table-wrap">
+          <table class="ref-table">
+            <thead>
+              <tr>
+                <th>Project</th>
+                <th>Timesheet Code</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for project in project_options %}
+              <tr>
+                <td>{{ project['project_name'] or '' }}</td>
+                <td>{{ project['name'] }}</td>
+                <td>{{ 'Active' if project['is_active'] else 'Inactive' }}</td>
+                <td>
+                  <div class="action-group">
+                    <form method="post" action="{% if project['is_active'] %}{{ url_for('main.deactivate_project_option', project_id=project['id']) }}{% else %}{{ url_for('main.activate_project_option', project_id=project['id']) }}{% endif %}">
+                      {% if project['is_active'] %}
+                      <button type="submit" class="small-btn">Deactivate</button>
+                      {% else %}
+                      <button type="submit" class="small-btn">Activate</button>
+                      {% endif %}
+                    </form>
+                    <form method="post" action="{{ url_for('main.delete_project_option', project_id=project['id']) }}" onsubmit="return confirm('Delete project {{ project['name'] }}? This cannot be undone.');">
+                      <button type="submit" class="small-btn">Delete</button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+              {% else %}
+              <tr>
+                <td colspan="4" class="empty">No projects configured.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div id="system_users" class="system-panel hidden">
+      <div class="project-admin">
+        <h3>Global Users</h3>
+        <form method="post" action="{{ url_for('main.add_user_option') }}" class="project-add-form">
+          <input name="user_name" placeholder="Add user name" required>
+          <input name="user_email" type="email" placeholder="Add user email">
+          <label class="inline-check"><input type="checkbox" name="is_operator"> Operator</label>
+          <button type="submit">Add User</button>
+        </form>
+        <div class="table-wrap ref-table-wrap">
+          <table class="ref-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Operator</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for user in user_options %}
+              <tr>
+                <td>{{ user['name'] }}</td>
+                <td>
+                  <form id="user-email-{{ user['id'] }}" method="post" action="{{ url_for('main.update_user_email', user_id=user['id']) }}"></form>
+                  <input type="email" name="user_email" value="{{ user['email'] or '' }}" placeholder="user@company.com" form="user-email-{{ user['id'] }}">
+                </td>
+                <td>
+                  <form id="user-operator-{{ user['id'] }}" method="post" action="{{ url_for('main.update_user_operator', user_id=user['id']) }}"></form>
+                  <input type="checkbox" name="is_operator" value="on" form="user-operator-{{ user['id'] }}" {% if user['is_operator'] %}checked{% endif %}>
+                </td>
+                <td>{{ 'Active' if user['is_active'] else 'Inactive' }}</td>
+                <td>
+                  <div class="action-group">
+                    <button type="submit" form="user-email-{{ user['id'] }}" class="small-btn">Save Email</button>
+                    <button type="submit" form="user-operator-{{ user['id'] }}" class="small-btn">Save Role</button>
+                    <form method="post" action="{% if user['is_active'] %}{{ url_for('main.deactivate_user_option', user_id=user['id']) }}{% else %}{{ url_for('main.activate_user_option', user_id=user['id']) }}{% endif %}">
+                      {% if user['is_active'] %}
+                      <button type="submit" class="small-btn">Deactivate</button>
+                      {% else %}
+                      <button type="submit" class="small-btn">Activate</button>
+                      {% endif %}
+                    </form>
+                    <form method="post" action="{{ url_for('main.delete_user_option', user_id=user['id']) }}" onsubmit="return confirm('Delete user {{ user['name'] }}? This cannot be undone.');">
+                      <button type="submit" class="small-btn">Delete</button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+              {% else %}
+              <tr>
+                <td colspan="5" class="empty">No users configured.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div id="system_equipment" class="system-panel hidden">
+      <div class="project-admin">
+        <h3>Equipment List</h3>
+        <form method="post" action="{{ url_for('main.add_equipment_option') }}" class="project-add-form">
+          <input name="equipment_name" placeholder="Name" required>
+          <input name="equipment_description" placeholder="Description">
+          <button type="submit">Add Equipment</button>
+        </form>
+        <div class="table-wrap ref-table-wrap">
+          <table class="ref-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Description</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in equipment_options %}
+              <tr>
+                <td>{{ item['name'] }}</td>
+                <td>{{ item['description'] or '' }}</td>
+                <td>{{ 'Active' if item['is_active'] else 'Inactive' }}</td>
+                <td>
+                  <div class="action-group">
+                    <form method="post" action="{% if item['is_active'] %}{{ url_for('main.deactivate_equipment_option', equipment_id=item['id']) }}{% else %}{{ url_for('main.activate_equipment_option', equipment_id=item['id']) }}{% endif %}">
+                      {% if item['is_active'] %}
+                      <button type="submit" class="small-btn">Deactivate</button>
+                      {% else %}
+                      <button type="submit" class="small-btn">Activate</button>
+                      {% endif %}
+                    </form>
+                  </div>
+                </td>
+              </tr>
+              {% else %}
+              <tr>
+                <td colspan="4" class="empty">No equipment configured.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function () {
+    const items = document.querySelectorAll('.submission-row');
+    const sheets = document.querySelectorAll('.submission-sheet');
+    if (!items.length || !sheets.length) return;
+
+    const show = (targetId) => {
+      sheets.forEach((sheet) => {
+        sheet.classList.toggle('hidden', sheet.id !== targetId);
+      });
+      items.forEach((item) => {
+        item.classList.toggle('active', item.dataset.target === targetId);
+      });
+    };
+
+    items.forEach((item) => {
+      item.addEventListener('click', () => show(item.dataset.target));
+    });
+  })();
+
+  (function () {
+    const root = document.documentElement;
+    const splitter = document.getElementById('portal_splitter');
+    const split = document.querySelector('.portal-split');
+    if (!splitter || !split) return;
+
+    let dragging = false;
+
+    splitter.addEventListener('mousedown', () => {
+      dragging = true;
+      document.body.style.userSelect = 'none';
+    });
+
+    window.addEventListener('mouseup', () => {
+      dragging = false;
+      document.body.style.userSelect = '';
+    });
+
+    window.addEventListener('mousemove', (event) => {
+      if (!dragging) return;
+      const rect = split.getBoundingClientRect();
+      const min = 220;
+      const max = Math.max(220, rect.width - 400);
+      const next = Math.min(max, Math.max(min, event.clientX - rect.left));
+      root.style.setProperty('--browse-width', `${next}px`);
+    });
+  })();
+
+  (function () {
+    const modal = document.getElementById('system_modal');
+    const openBtn = document.getElementById('manage_system_open');
+    const closeBtn = document.getElementById('manage_system_close');
+    if (!modal || !openBtn || !closeBtn) return;
+
+    const open = () => modal.classList.remove('hidden');
+    const close = () => modal.classList.add('hidden');
+
+    openBtn.addEventListener('click', open);
+    closeBtn.addEventListener('click', close);
+    modal.addEventListener('click', (event) => {
+      if (event.target === modal) close();
+    });
+    window.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') close();
+    });
+  })();
+
+  (function () {
+    const tabs = document.querySelectorAll('.system-tab');
+    const panels = document.querySelectorAll('.system-panel');
+    if (!tabs.length || !panels.length) return;
+
+    const activate = (id) => {
+      tabs.forEach((tab) => tab.classList.toggle('active', tab.dataset.tab === id));
+      panels.forEach((panel) => panel.classList.toggle('hidden', panel.id !== id));
+    };
+
+    tabs.forEach((tab) => {
+      tab.addEventListener('click', () => activate(tab.dataset.tab));
+    });
+  })();
+</script>
+{% endblock %}

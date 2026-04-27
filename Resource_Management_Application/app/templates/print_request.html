@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ELN {{ row['eln_reference'] or ('Request-' ~ row['id']) }} Print View</title>
+  <style>
+    :root {
+      --line: #d2d7e0;
+      --text: #1f2733;
+      --muted: #566273;
+      --bg: #f4f6fa;
+      --card: #ffffff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+    }
+    .page {
+      max-width: 980px;
+      margin: 18px auto;
+      padding: 0 12px;
+    }
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      gap: 10px;
+    }
+    .toolbar button, .toolbar a {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 8px 10px;
+      background: #fff;
+      color: var(--text);
+      text-decoration: none;
+      cursor: pointer;
+      font: inherit;
+    }
+    .sheet {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 14px;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 22px;
+    }
+    h2 {
+      margin: 0 0 8px;
+      font-size: 16px;
+    }
+    .section {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      margin-top: 10px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px 14px;
+    }
+    .field {
+      font-size: 13px;
+    }
+    .label {
+      color: var(--muted);
+      font-size: 12px;
+      display: block;
+      margin-bottom: 2px;
+    }
+    .value {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      min-height: 30px;
+      padding: 6px 8px;
+      white-space: pre-wrap;
+      background: #fff;
+    }
+    .full { grid-column: 1 / -1; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 6px;
+    }
+    th, td {
+      border: 1px solid var(--line);
+      padding: 7px;
+      font-size: 13px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: #f8fafc; }
+    @media print {
+      body { background: #fff; }
+      .toolbar { display: none; }
+      .page { max-width: none; margin: 0; padding: 0; }
+      .sheet { border: none; border-radius: 0; padding: 0; }
+      .section { page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="sheet">
+      <h1>Hydrogenation Submission Form - ELN {{ row['eln_reference'] or ('Request-' ~ row['id']) }}</h1>
+
+      <div class="section">
+        <h2>Request Details</h2>
+        <div class="grid">
+          <div class="field"><span class="label">Requestor</span><div class="value">{{ row['requester_name'] or '' }}</div></div>
+          <div class="field"><span class="label">Request Date</span><div class="value">{{ row['request_date'] or '' }}</div></div>
+          <div class="field"><span class="label">ELN Reference</span><div class="value">{{ row['eln_reference'] or '' }}</div></div>
+          <div class="field"><span class="label">Timesheet Code</span><div class="value">{{ row['timesheet_code'] or '' }}</div></div>
+          <div class="field"><span class="label">Project Code</span><div class="value">{{ row['project_code'] or '' }}</div></div>
+          <div class="field"><span class="label">Required Date</span><div class="value">{{ row['required_date'] or '' }}</div></div>
+          <div class="field full"><span class="label">Time / Duration</span><div class="value">{{ row['time_duration'] or '' }}</div></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>Equipment</h2>
+        <div class="value">{{ row['equipment_selected'] or '' }}</div>
+      </div>
+
+      <div class="section">
+        <h2>Chemistry</h2>
+        <div class="grid">
+          <div class="field full"><span class="label">Chemical Transformation</span><div class="value">{{ row['chemical_transformation'] or '' }}</div></div>
+          <div class="field full"><span class="label">Reagents / Solvents</span><div class="value">{{ row['reagents_solvents'] or '' }}</div></div>
+          <div class="field"><span class="label">Catalyst and Amount</span><div class="value">{{ row['catalyst_amount'] or '' }}</div></div>
+          <div class="field"><span class="label">Gas and Theory Uptake</span><div class="value">{{ row['gas'] or '' }} {{ row['theory_uptake'] or '' }}</div></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>Safety</h2>
+        <div class="grid">
+          <div class="field full"><span class="label">H Phrases</span><div class="value">{{ row['h_phrases'] or '' }}</div></div>
+          <div class="field full"><span class="label">COSHH</span><div class="value">{{ row['coshh'] or '' }}</div></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>Sampling</h2>
+        <table>
+          <thead>
+            <tr><th>Sample No.</th><th>Time</th></tr>
+          </thead>
+          <tbody>
+            {% if sample_lines %}
+              {% for item in sample_lines %}
+              <tr>
+                <td>{{ item.split(':')[0].replace('Sample', '').strip() }}</td>
+                <td>{{ item.split(':', 1)[1].strip() if ':' in item else item }}</td>
+              </tr>
+              {% endfor %}
+            {% else %}
+              <tr><td></td><td></td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+
+        <table>
+          <thead>
+            <tr><th>Sample Size</th><th>Diluent</th><th>Volume</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>{{ row['sample_size'] or '' }}</td>
+              <td>{{ row['diluent'] or '' }}</td>
+              <td>{{ row['diluent_volume'] or '' }}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="field full">
+          <span class="label">Analytical Method</span>
+          <div class="value">{{ row['analytical_method'] or '' }}</div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>Cleaning</h2>
+        <div class="field full">
+          <span class="label">Cleaning Solvents / Protocol</span>
+          <div class="value">{{ row['cleaning_protocol'] or '' }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

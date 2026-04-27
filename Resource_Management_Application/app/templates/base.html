@@ -1,0 +1,26 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Hydrogenation Work Tracker V0.01{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+  <header class="topbar">
+    <h1>Hydrogenation Work Tracker V0.01</h1>
+    <nav>
+      <a href="{{ url_for('main.submit_request') }}">Submit Request</a>
+      <a href="{{ url_for('main.portal') }}">Portal</a>
+      {% if session.get('portal_authenticated') %}
+      <form method="post" action="{{ url_for('main.portal_logout') }}" class="logout-form">
+        <button type="submit" class="linklike">Logout</button>
+      </form>
+      {% endif %}
+    </nav>
+  </header>
+  <main class="container">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>
