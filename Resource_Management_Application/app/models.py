@@ -1,7 +1,13 @@
 ﻿import sqlite3
-from pathlib import Path
+from .config import get_db_path, load_deployment_env
 
-DB_PATH = Path(__file__).resolve().parent.parent / 'requests.db'
+load_deployment_env()
+
+
+def db_path():
+    return get_db_path()
+
+
 DEFAULT_EQUIPMENT = [
     (
         '96 parallel reactor',
@@ -31,7 +37,9 @@ DEFAULT_EQUIPMENT = [
 
 
 def get_conn():
-    conn = sqlite3.connect(DB_PATH)
+    path = db_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(path)
     conn.row_factory = sqlite3.Row
     return conn
 

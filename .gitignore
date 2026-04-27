@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+.venv/
+venv/
+env/
+ENV/
+pip-wheel-metadata/
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Flask / local configuration
+.env
+*.env
+deployment.env
+instance/
+
+# Application data and exports
+*.db
+*.sqlite
+*.sqlite3
+*.csv
+*.pdf
+
+# Office temp files
+~$*
+
+# Logs
+*.log
+logs/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+*.swp
+*.swo

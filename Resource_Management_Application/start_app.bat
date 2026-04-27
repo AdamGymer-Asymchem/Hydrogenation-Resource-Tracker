@@ -12,8 +12,18 @@ if not exist ".venv\Scripts\activate.bat" (
 
 call ".venv\Scripts\activate.bat"
 
+if exist "deployment.env" (
+  for /f "usebackq tokens=1,* delims==" %%A in ("deployment.env") do (
+    if not "%%A"=="" if not "%%A:~0,1%"=="#" if not "%%B"=="" set "%%A=%%B"
+  )
+)
+
+if "%PORT%"=="" (
+  set "PORT=17001"
+)
+
 if "%PORTAL_PASSWORD%"=="" (
-  set /p PORTAL_PASSWORD=Enter PORTAL_PASSWORD: 
+  set "PORTAL_PASSWORD=LotsOfBubbles"
 )
 
 if "%PORTAL_PASSWORD%"=="" (
@@ -22,7 +32,7 @@ if "%PORTAL_PASSWORD%"=="" (
   exit /b 1
 )
 
-echo Starting Hydrogenation Work Tracker on http://0.0.0.0:8080 ...
-waitress-serve --host 0.0.0.0 --port 8080 run:app
+echo Starting Hydrogenation Work Tracker on http://0.0.0.0:%PORT% ...
+waitress-serve --host 0.0.0.0 --port %PORT% run:app
 
 endlocal
