@@ -15,8 +15,8 @@ python run.py
 ```
 
 Open:
-- Submit form: http://127.0.0.1:5000/submit
-- Portal: http://127.0.0.1:5000/portal
+- Submit form: http://127.0.0.1:17001/submit
+- Portal: http://127.0.0.1:17001/portal
 
 ## Deployment configuration
 
